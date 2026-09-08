@@ -30,11 +30,16 @@ import { ConfirmDialogModal } from './ConfirmDialogModal';
 interface AdminCMSViewProps {
   onBackToPortfolio: () => void;
   onLockAdmin?: () => void;
+  onReplayBoot?: () => void;
 }
 
 type AdminTab = 'profile' | 'projects' | 'experience' | 'about' | 'skills' | 'feats' | 'data';
 
-export const AdminCMSView: React.FC<AdminCMSViewProps> = ({ onBackToPortfolio, onLockAdmin }) => {
+export const AdminCMSView: React.FC<AdminCMSViewProps> = ({
+  onBackToPortfolio,
+  onLockAdmin,
+  onReplayBoot,
+}) => {
   const {
     personalInfo,
     projects,
@@ -661,6 +666,17 @@ export const AdminCMSView: React.FC<AdminCMSViewProps> = ({ onBackToPortfolio, o
 
         {/* Global Action Buttons */}
         <div className="flex items-center gap-2 md:gap-3">
+          {onReplayBoot && (
+            <button
+              onClick={onReplayBoot}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white text-white hover:text-black transition-all text-xs font-mono font-bold"
+              title="Preview Apple Power-On Boot Animation"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+              <span>Apple Boot Screen</span>
+            </button>
+          )}
+
           <button
             onClick={handleExportJSON}
             className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/15 text-neutral-300 hover:text-white transition-colors text-xs font-mono"

@@ -13,8 +13,10 @@ import { SkillsView } from './components/SkillsView';
 import { FeatsView } from './components/FeatsView';
 import { AdminCMSView } from './components/AdminCMSView';
 import { AdminPasswordModal } from './components/AdminPasswordModal';
+import { AppleHelloLoading } from './components/AppleHelloLoading';
 
 function PortfolioApp() {
+  const [isLoading, setIsLoading] = useState(true);
   const [currentSection, setCurrentSection] = useState<SectionId>('home');
   const [isHomeIntroOpen, setIsHomeIntroOpen] = useState(false);
   const [isAdminAuthModalOpen, setIsAdminAuthModalOpen] = useState(false);
@@ -276,6 +278,7 @@ function PortfolioApp() {
                   setIsHomeIntroOpen(true);
                 }}
                 onLockAdmin={handleLockAdmin}
+                onReplayBoot={() => setIsLoading(true)}
               />
             </motion.div>
           )}
@@ -288,6 +291,13 @@ function PortfolioApp() {
         onClose={() => setIsAdminAuthModalOpen(false)}
         onSuccess={handleAdminAuthSuccess}
       />
+
+      {/* Apple Power-On "hello" Loading Boot Screen */}
+      <AnimatePresence>
+        {isLoading && (
+          <AppleHelloLoading onComplete={() => setIsLoading(false)} />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
