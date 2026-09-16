@@ -8,6 +8,12 @@ import {
   FeatItem
 } from '../types';
 import { INITIAL_PORTFOLIO_DATA } from '../data/portfolioData';
+import {
+  savePortfolioToFirestore,
+  getPortfolioFromFirestore,
+  subscribeToPortfolioChanges,
+  testFirestoreConnection,
+} from '../lib/firebase';
 
 const LOCAL_STORAGE_KEY = 'dk_portfolio_cms_data_v1';
 
@@ -107,7 +113,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   };
 
-  // 1. Save data to Cloud Server (Persisted across all mobiles and devices)
+  // 1. Save data to Cloud Server & Google Cloud Firestore (Persisted across all mobiles and devices worldwide)
   const saveToCloud = useCallback(async (dataOverride?: PortfolioData): Promise<boolean> => {
     // Clear any pending debounced auto-save since we are saving now
     if (saveTimeoutRef.current) {
@@ -120,20 +126,24 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setIsSavingToCloud(true);
 
     try {
-      const res = await fetch('/api/portfolio', {
+      const now = Date.now();
+
+      // Primary: Save directly to Google Cloud Firestore
+      // This works on Vercel, mobile browsers, desktop, and everywhere without needing an Express server!
+      const firestoreSuccess = await savePortfolioToFirestore(payloadData);
+
+      // Secondary: Try Express API route if server is running (e.g. Cloud Run / local dev)
+      fetch('/api/portfolio', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ data: payloadData }),
+      }).catch(() => {
+        // Express might not exist on static Vercel host, which is totally fine
       });
 
-      if (!res.ok) throw new Error(`HTTP error ${res.status}`);
-      const json = await res.json();
-
-      if (json.success) {
-        lastServerTimestampRef.current = json.updatedAt;
-        setLastSyncedTime(new Date(json.updatedAt));
+      if (firestoreSuccess) {
+        lastServerTimestampRef.current = now;
+        setLastSyncedTime(new Date(now));
         setIsCloudSynced(true);
         setHasUnsavedChanges(false);
         persistLocally(payloadData);
@@ -142,7 +152,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         if (broadcastChannelRef.current) {
           broadcastChannelRef.current.postMessage({
             type: 'DATA_UPDATED',
-            updatedAt: json.updatedAt,
+            updatedAt: now,
           });
         }
         return true;
@@ -157,23 +167,47 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   }, []);
 
-  // 2. Fetch latest persistent data from Cloud Server
+  // 2. Fetch latest persistent data from Cloud (Firestore + Express fallback)
   const fetchFromCloud = useCallback(async (force = false): Promise<boolean> => {
     // Never overwrite if user is actively in the middle of typing or has unsaved changes, unless forced
     if (!force && hasUnsavedChangesRef.current) {
       return false;
     }
 
+    // Attempt 1: Fetch directly from Google Cloud Firestore (always available on Vercel)
+    try {
+      const firestoreResult = await getPortfolioFromFirestore();
+      if (firestoreResult && firestoreResult.data && firestoreResult.data.personalInfo && firestoreResult.data.projects) {
+        if (force || firestoreResult.updatedAt > lastServerTimestampRef.current || lastServerTimestampRef.current === 0) {
+          setData(firestoreResult.data);
+          persistLocally(firestoreResult.data);
+          lastServerTimestampRef.current = firestoreResult.updatedAt || Date.now();
+          setLastSyncedTime(new Date(lastServerTimestampRef.current));
+          setIsCloudSynced(true);
+          setHasUnsavedChanges(false);
+          return true;
+        }
+        setIsCloudSynced(true);
+        return true;
+      } else if (!firestoreResult || !firestoreResult.data) {
+        // Firestore is newly initialized; seed initial portfolio into Firestore
+        await savePortfolioToFirestore(dataRef.current);
+        setIsCloudSynced(true);
+        return true;
+      }
+    } catch (err) {
+      console.warn('[Firestore] Notice during cloud fetch:', err);
+    }
+
+    // Attempt 2: Fallback to Express backend if available
     try {
       const res = await fetch('/api/portfolio', {
         headers: { credentials: 'omit' },
         cache: 'no-store',
       });
-      if (!res.ok) return false;
-      const json = await res.json();
-      if (json.success) {
-        if (json.data && json.data.personalInfo && json.data.projects) {
-          // If server data is newer or on first load
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.data && json.data.personalInfo) {
           if (force || json.updatedAt > lastServerTimestampRef.current || lastServerTimestampRef.current === 0) {
             setData(json.data);
             persistLocally(json.data);
@@ -183,19 +217,14 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             setHasUnsavedChanges(false);
             return true;
           }
-        } else if (json.data === null) {
-          // Server database file is empty or new; seed server with current data
-          await saveToCloud(dataRef.current);
-          setIsCloudSynced(true);
-          return true;
         }
       }
-      return false;
-    } catch (err) {
-      console.warn('Could not fetch cloud data (offline mode active):', err);
-      return false;
+    } catch {
+      // Offline fallback already preserved in localStorage
     }
-  }, [saveToCloud]);
+
+    return false;
+  }, []);
 
   // Schedule auto-save to cloud whenever data is updated
   const applyDataUpdate = (nextData: PortfolioData) => {
@@ -215,8 +244,23 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   // Initial fetch on mount & background sync listeners
   useEffect(() => {
+    testFirestoreConnection().catch(() => {});
+
     // Initial fetch once on mount
     fetchFromCloud(false);
+
+    // Realtime live synchronization from Firestore:
+    // When any device edits and saves, every other phone, mobile, and browser receives updates in real time!
+    const unsubscribeFirestore = subscribeToPortfolioChanges((remoteData, remoteUpdatedAt) => {
+      if (hasUnsavedChangesRef.current || isSavingRef.current) return;
+      if (remoteUpdatedAt > lastServerTimestampRef.current) {
+        setData(remoteData);
+        persistLocally(remoteData);
+        lastServerTimestampRef.current = remoteUpdatedAt;
+        setLastSyncedTime(new Date(remoteUpdatedAt));
+        setIsCloudSynced(true);
+      }
+    });
 
     // Broadcast channel for instantaneous cross-tab sync in same browser
     if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
@@ -243,7 +287,6 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         if (res.ok) {
           const json = await res.json();
           if (json.updatedAt && json.updatedAt > lastServerTimestampRef.current) {
-            console.log('[Sync] Remote changes detected from another device. Fetching latest data...');
             fetchFromCloud(true);
           }
         }
@@ -263,6 +306,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     document.addEventListener('visibilitychange', handleVisibilityOrFocus);
 
     return () => {
+      unsubscribeFirestore();
       clearInterval(interval);
       window.removeEventListener('focus', handleVisibilityOrFocus);
       document.removeEventListener('visibilitychange', handleVisibilityOrFocus);

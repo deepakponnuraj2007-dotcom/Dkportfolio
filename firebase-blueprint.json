@@ -1,0 +1,24 @@
+{
+  "entities": {
+    "PortfolioData": {
+      "title": "PortfolioData",
+      "description": "Portfolio content including profile, projects, experiences, skills, and feats",
+      "type": "object",
+      "properties": {
+        "personalInfo": { "type": "object" },
+        "projects": { "type": "array" },
+        "experiences": { "type": "array" },
+        "skillCategories": { "type": "array" },
+        "feats": { "type": "array" },
+        "customAvatar": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      }
+    }
+  },
+  "firestore": {
+    "/portfolio/{portfolioId}": {
+      "schema": "PortfolioData",
+      "description": "Shared portfolio document synchronized across all devices and web deployments"
+    }
+  }
+}
