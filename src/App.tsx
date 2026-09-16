@@ -13,7 +13,7 @@ import { SkillsView } from './components/SkillsView';
 import { FeatsView } from './components/FeatsView';
 import { AdminCMSView } from './components/AdminCMSView';
 import { AdminPasswordModal } from './components/AdminPasswordModal';
-import { AppleHelloLoading } from './components/AppleHelloLoading';
+import { MinimalLoadingScreen } from './components/MinimalLoadingScreen';
 
 function PortfolioApp() {
   const [isLoading, setIsLoading] = useState(true);
@@ -292,10 +292,10 @@ function PortfolioApp() {
         onSuccess={handleAdminAuthSuccess}
       />
 
-      {/* Apple Power-On "hello" Loading Boot Screen */}
+      {/* Minimal Black Loading Screen with Bottom-Right 3-Dot Blink Effect */}
       <AnimatePresence>
         {isLoading && (
-          <AppleHelloLoading onComplete={() => setIsLoading(false)} />
+          <MinimalLoadingScreen onComplete={() => setIsLoading(false)} />
         )}
       </AnimatePresence>
     </div>

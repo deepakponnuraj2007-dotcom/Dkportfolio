@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import {
   PortfolioData,
   PersonalInfo,
@@ -19,6 +19,14 @@ interface PortfolioContextType {
   skillCategories: SkillCategoryItem[];
   feats: FeatItem[];
   
+  // Cloud & Multi-device Sync State
+  isCloudSynced: boolean;
+  isSavingToCloud: boolean;
+  hasUnsavedChanges: boolean;
+  lastSyncedTime: Date | null;
+  saveToCloud: (dataOverride?: PortfolioData) => Promise<boolean>;
+  fetchFromCloud: (force?: boolean) => Promise<boolean>;
+
   // Personal Info
   updatePersonalInfo: (info: Partial<PersonalInfo>) => void;
   setCustomAvatar: (dataUrl: string) => void;
@@ -45,7 +53,7 @@ interface PortfolioContextType {
   deleteFeat: (id: string) => void;
   
   // Reset & Backup
-  resetToDefaults: () => void;
+  resetToDefaults: () => Promise<void>;
   exportJSON: () => string;
   importJSON: (jsonStr: string) => boolean;
 }
@@ -53,12 +61,12 @@ interface PortfolioContextType {
 const PortfolioContext = createContext<PortfolioContextType | null>(null);
 
 export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // Initialize with localStorage cache (or default)
   const [data, setData] = useState<PortfolioData>(() => {
     try {
       const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        // Basic schema integrity check
         if (parsed.personalInfo && parsed.projects && parsed.experiences && parsed.skillCategories && parsed.feats) {
           return parsed;
         }
@@ -69,45 +77,235 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     return INITIAL_PORTFOLIO_DATA;
   });
 
-  // Sync state changes to localStorage
+  const [isCloudSynced, setIsCloudSynced] = useState<boolean>(false);
+  const [isSavingToCloud, setIsSavingToCloud] = useState<boolean>(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState<boolean>(false);
+  const [lastSyncedTime, setLastSyncedTime] = useState<Date | null>(null);
+
+  // Keep a stable ref to data to prevent dependency loops in effects and callbacks
+  const dataRef = useRef<PortfolioData>(data);
   useEffect(() => {
-    try {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(data));
-    } catch (err) {
-      console.error('Failed to save portfolio data to localStorage:', err);
-    }
+    dataRef.current = data;
   }, [data]);
+
+  const hasUnsavedChangesRef = useRef<boolean>(false);
+  useEffect(() => {
+    hasUnsavedChangesRef.current = hasUnsavedChanges;
+  }, [hasUnsavedChanges]);
+
+  const lastServerTimestampRef = useRef<number>(0);
+  const isSavingRef = useRef<boolean>(false);
+  const broadcastChannelRef = useRef<BroadcastChannel | null>(null);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Helper to persist to localStorage safely
+  const persistLocally = (portfolioData: PortfolioData) => {
+    try {
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(portfolioData));
+    } catch (err) {
+      console.error('Failed to save to localStorage:', err);
+    }
+  };
+
+  // 1. Save data to Cloud Server (Persisted across all mobiles and devices)
+  const saveToCloud = useCallback(async (dataOverride?: PortfolioData): Promise<boolean> => {
+    // Clear any pending debounced auto-save since we are saving now
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = null;
+    }
+
+    const payloadData = dataOverride || dataRef.current;
+    isSavingRef.current = true;
+    setIsSavingToCloud(true);
+
+    try {
+      const res = await fetch('/api/portfolio', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ data: payloadData }),
+      });
+
+      if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+      const json = await res.json();
+
+      if (json.success) {
+        lastServerTimestampRef.current = json.updatedAt;
+        setLastSyncedTime(new Date(json.updatedAt));
+        setIsCloudSynced(true);
+        setHasUnsavedChanges(false);
+        persistLocally(payloadData);
+
+        // Notify other open tabs/windows
+        if (broadcastChannelRef.current) {
+          broadcastChannelRef.current.postMessage({
+            type: 'DATA_UPDATED',
+            updatedAt: json.updatedAt,
+          });
+        }
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.error('Failed to save to cloud server:', err);
+      return false;
+    } finally {
+      isSavingRef.current = false;
+      setIsSavingToCloud(false);
+    }
+  }, []);
+
+  // 2. Fetch latest persistent data from Cloud Server
+  const fetchFromCloud = useCallback(async (force = false): Promise<boolean> => {
+    // Never overwrite if user is actively in the middle of typing or has unsaved changes, unless forced
+    if (!force && hasUnsavedChangesRef.current) {
+      return false;
+    }
+
+    try {
+      const res = await fetch('/api/portfolio', {
+        headers: { credentials: 'omit' },
+        cache: 'no-store',
+      });
+      if (!res.ok) return false;
+      const json = await res.json();
+      if (json.success) {
+        if (json.data && json.data.personalInfo && json.data.projects) {
+          // If server data is newer or on first load
+          if (force || json.updatedAt > lastServerTimestampRef.current || lastServerTimestampRef.current === 0) {
+            setData(json.data);
+            persistLocally(json.data);
+            lastServerTimestampRef.current = json.updatedAt || Date.now();
+            setLastSyncedTime(new Date(lastServerTimestampRef.current));
+            setIsCloudSynced(true);
+            setHasUnsavedChanges(false);
+            return true;
+          }
+        } else if (json.data === null) {
+          // Server database file is empty or new; seed server with current data
+          await saveToCloud(dataRef.current);
+          setIsCloudSynced(true);
+          return true;
+        }
+      }
+      return false;
+    } catch (err) {
+      console.warn('Could not fetch cloud data (offline mode active):', err);
+      return false;
+    }
+  }, [saveToCloud]);
+
+  // Schedule auto-save to cloud whenever data is updated
+  const applyDataUpdate = (nextData: PortfolioData) => {
+    setData(nextData);
+    persistLocally(nextData);
+    setHasUnsavedChanges(true);
+
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    // Debounced background save so typing is smooth, while header Save button saves immediately
+    saveTimeoutRef.current = setTimeout(() => {
+      saveToCloud(nextData);
+    }, 1200);
+  };
+
+  // Initial fetch on mount & background sync listeners
+  useEffect(() => {
+    // Initial fetch once on mount
+    fetchFromCloud(false);
+
+    // Broadcast channel for instantaneous cross-tab sync in same browser
+    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+      try {
+        const channel = new BroadcastChannel('deepak_portfolio_sync');
+        channel.onmessage = (event) => {
+          if (event.data?.type === 'DATA_UPDATED') {
+            if (!hasUnsavedChangesRef.current) {
+              fetchFromCloud(true);
+            }
+          }
+        };
+        broadcastChannelRef.current = channel;
+      } catch {
+        // BroadcastChannel optional
+      }
+    }
+
+    // Periodic lightweight polling to detect if another mobile/device made edits
+    const interval = setInterval(async () => {
+      if (isSavingRef.current || hasUnsavedChangesRef.current) return;
+      try {
+        const res = await fetch('/api/portfolio/version', { cache: 'no-store' });
+        if (res.ok) {
+          const json = await res.json();
+          if (json.updatedAt && json.updatedAt > lastServerTimestampRef.current) {
+            console.log('[Sync] Remote changes detected from another device. Fetching latest data...');
+            fetchFromCloud(true);
+          }
+        }
+      } catch {
+        // Silently ignore network hiccups during background poll
+      }
+    }, 6000);
+
+    // When user switches back to mobile browser / window tab
+    const handleVisibilityOrFocus = () => {
+      if (document.visibilityState === 'visible' && !isSavingRef.current && !hasUnsavedChangesRef.current) {
+        fetchFromCloud(false);
+      }
+    };
+
+    window.addEventListener('focus', handleVisibilityOrFocus);
+    document.addEventListener('visibilitychange', handleVisibilityOrFocus);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', handleVisibilityOrFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
+      if (broadcastChannelRef.current) {
+        broadcastChannelRef.current.close();
+      }
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [fetchFromCloud]);
 
   // Personal info methods
   const updatePersonalInfo = (info: Partial<PersonalInfo>) => {
-    setData((prev) => ({
-      ...prev,
+    const next = {
+      ...dataRef.current,
       personalInfo: {
-        ...prev.personalInfo,
+        ...dataRef.current.personalInfo,
         ...info,
       },
-    }));
+    };
+    applyDataUpdate(next);
   };
 
   const setCustomAvatar = (dataUrl: string) => {
-    setData((prev) => ({
-      ...prev,
+    const next = {
+      ...dataRef.current,
       personalInfo: {
-        ...prev.personalInfo,
+        ...dataRef.current.personalInfo,
         customAvatarUrl: dataUrl,
       },
-    }));
+    };
+    applyDataUpdate(next);
   };
 
   const resetAvatar = () => {
-    setData((prev) => {
-      const nextInfo = { ...prev.personalInfo };
-      delete nextInfo.customAvatarUrl;
-      return {
-        ...prev,
-        personalInfo: nextInfo,
-      };
-    });
+    const nextInfo = { ...dataRef.current.personalInfo };
+    delete nextInfo.customAvatarUrl;
+    const next = {
+      ...dataRef.current,
+      personalInfo: nextInfo,
+    };
+    applyDataUpdate(next);
   };
 
   // Projects CRUD
@@ -116,24 +314,27 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       ...project,
       id: project.id || `proj_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
     };
-    setData((prev) => ({
-      ...prev,
-      projects: [newProject, ...prev.projects],
-    }));
+    const next = {
+      ...dataRef.current,
+      projects: [newProject, ...dataRef.current.projects],
+    };
+    applyDataUpdate(next);
   };
 
   const updateProject = (id: string, updatedFields: Partial<ProjectItem>) => {
-    setData((prev) => ({
-      ...prev,
-      projects: prev.projects.map((p) => (p.id === id ? { ...p, ...updatedFields } : p)),
-    }));
+    const next = {
+      ...dataRef.current,
+      projects: dataRef.current.projects.map((p) => (p.id === id ? { ...p, ...updatedFields } : p)),
+    };
+    applyDataUpdate(next);
   };
 
   const deleteProject = (id: string) => {
-    setData((prev) => ({
-      ...prev,
-      projects: prev.projects.filter((p) => p.id !== id),
-    }));
+    const next = {
+      ...dataRef.current,
+      projects: dataRef.current.projects.filter((p) => p.id !== id),
+    };
+    applyDataUpdate(next);
   };
 
   // Experiences CRUD
@@ -142,24 +343,27 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       ...experience,
       id: experience.id || `exp_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
     };
-    setData((prev) => ({
-      ...prev,
-      experiences: [newExp, ...prev.experiences],
-    }));
+    const next = {
+      ...dataRef.current,
+      experiences: [newExp, ...dataRef.current.experiences],
+    };
+    applyDataUpdate(next);
   };
 
   const updateExperience = (id: string, updatedFields: Partial<ExperienceItem>) => {
-    setData((prev) => ({
-      ...prev,
-      experiences: prev.experiences.map((e) => (e.id === id ? { ...e, ...updatedFields } : e)),
-    }));
+    const next = {
+      ...dataRef.current,
+      experiences: dataRef.current.experiences.map((e) => (e.id === id ? { ...e, ...updatedFields } : e)),
+    };
+    applyDataUpdate(next);
   };
 
   const deleteExperience = (id: string) => {
-    setData((prev) => ({
-      ...prev,
-      experiences: prev.experiences.filter((e) => e.id !== id),
-    }));
+    const next = {
+      ...dataRef.current,
+      experiences: dataRef.current.experiences.filter((e) => e.id !== id),
+    };
+    applyDataUpdate(next);
   };
 
   // Skills CRUD
@@ -168,24 +372,27 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       ...category,
       id: category.id || `skillcat_${Date.now()}`,
     };
-    setData((prev) => ({
-      ...prev,
-      skillCategories: [...prev.skillCategories, newCat],
-    }));
+    const next = {
+      ...dataRef.current,
+      skillCategories: [...dataRef.current.skillCategories, newCat],
+    };
+    applyDataUpdate(next);
   };
 
   const updateSkillCategory = (id: string, updatedFields: Partial<SkillCategoryItem>) => {
-    setData((prev) => ({
-      ...prev,
-      skillCategories: prev.skillCategories.map((c) => (c.id === id ? { ...c, ...updatedFields } : c)),
-    }));
+    const next = {
+      ...dataRef.current,
+      skillCategories: dataRef.current.skillCategories.map((c) => (c.id === id ? { ...c, ...updatedFields } : c)),
+    };
+    applyDataUpdate(next);
   };
 
   const deleteSkillCategory = (id: string) => {
-    setData((prev) => ({
-      ...prev,
-      skillCategories: prev.skillCategories.filter((c) => c.id !== id),
-    }));
+    const next = {
+      ...dataRef.current,
+      skillCategories: dataRef.current.skillCategories.filter((c) => c.id !== id),
+    };
+    applyDataUpdate(next);
   };
 
   // Feats CRUD
@@ -194,41 +401,52 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       ...feat,
       id: feat.id || `feat_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
     };
-    setData((prev) => ({
-      ...prev,
-      feats: [newFeat, ...prev.feats],
-    }));
+    const next = {
+      ...dataRef.current,
+      feats: [newFeat, ...dataRef.current.feats],
+    };
+    applyDataUpdate(next);
   };
 
   const updateFeat = (id: string, updatedFields: Partial<FeatItem>) => {
-    setData((prev) => ({
-      ...prev,
-      feats: prev.feats.map((f) => (f.id === id ? { ...f, ...updatedFields } : f)),
-    }));
+    const next = {
+      ...dataRef.current,
+      feats: dataRef.current.feats.map((f) => (f.id === id ? { ...f, ...updatedFields } : f)),
+    };
+    applyDataUpdate(next);
   };
 
   const deleteFeat = (id: string) => {
-    setData((prev) => ({
-      ...prev,
-      feats: prev.feats.filter((f) => f.id !== id),
-    }));
+    const next = {
+      ...dataRef.current,
+      feats: dataRef.current.feats.filter((f) => f.id !== id),
+    };
+    applyDataUpdate(next);
   };
 
   // Reset & Backup
-  const resetToDefaults = () => {
+  const resetToDefaults = async () => {
     setData(INITIAL_PORTFOLIO_DATA);
-    localStorage.removeItem(LOCAL_STORAGE_KEY);
+    persistLocally(INITIAL_PORTFOLIO_DATA);
+    setHasUnsavedChanges(false);
+    try {
+      await fetch('/api/portfolio/reset', { method: 'POST' });
+      await saveToCloud(INITIAL_PORTFOLIO_DATA);
+    } catch (err) {
+      console.error('Failed to reset on cloud server:', err);
+    }
   };
 
   const exportJSON = (): string => {
-    return JSON.stringify(data, null, 2);
+    return JSON.stringify(dataRef.current, null, 2);
   };
 
   const importJSON = (jsonStr: string): boolean => {
     try {
       const parsed = JSON.parse(jsonStr);
       if (parsed.personalInfo && parsed.projects && parsed.experiences && parsed.skillCategories && parsed.feats) {
-        setData(parsed);
+        applyDataUpdate(parsed);
+        saveToCloud(parsed);
         return true;
       }
       return false;
@@ -247,6 +465,12 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         experiences: data.experiences,
         skillCategories: data.skillCategories,
         feats: data.feats,
+        isCloudSynced,
+        isSavingToCloud,
+        hasUnsavedChanges,
+        lastSyncedTime,
+        saveToCloud,
+        fetchFromCloud,
         updatePersonalInfo,
         setCustomAvatar,
         resetAvatar,

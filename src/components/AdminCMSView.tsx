@@ -21,7 +21,9 @@ import {
   Code2,
   Sparkles,
   Lock,
-  X
+  X,
+  Cloud,
+  RefreshCw
 } from 'lucide-react';
 import { usePortfolio } from '../context/PortfolioContext';
 import { ProjectItem, ExperienceItem, SkillCategoryItem, FeatItem } from '../types';
@@ -64,10 +66,17 @@ export const AdminCMSView: React.FC<AdminCMSViewProps> = ({
     resetToDefaults,
     exportJSON,
     importJSON,
+    isCloudSynced,
+    isSavingToCloud,
+    hasUnsavedChanges,
+    saveToCloud,
+    fetchFromCloud,
+    lastSyncedTime,
   } = usePortfolio();
 
   const [activeTab, setActiveTab] = useState<AdminTab>('projects');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [justSaved, setJustSaved] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const jsonImportRef = useRef<HTMLInputElement>(null);
 
@@ -290,7 +299,8 @@ export const AdminCMSView: React.FC<AdminCMSViewProps> = ({
         const result = event.target?.result as string;
         if (result) {
           setCustomAvatar(result);
-          showToast('Profile photo updated successfully!');
+          saveToCloud();
+          showToast('Profile photo updated & saved!');
         }
       };
       reader.readAsDataURL(file);
@@ -388,6 +398,7 @@ export const AdminCMSView: React.FC<AdminCMSViewProps> = ({
     }
     setIsAddingProject(false);
     setEditingProject(null);
+    saveToCloud();
   };
 
   // Experiences Handlers
@@ -464,6 +475,7 @@ export const AdminCMSView: React.FC<AdminCMSViewProps> = ({
     }
     setIsAddingExperience(false);
     setEditingExperience(null);
+    saveToCloud();
   };
 
   // Skill Categories Handlers
@@ -525,6 +537,7 @@ export const AdminCMSView: React.FC<AdminCMSViewProps> = ({
     }
     setIsAddingSkillCategory(false);
     setEditingSkillCategory(null);
+    saveToCloud();
   };
 
   // Feats Handlers
@@ -619,6 +632,7 @@ export const AdminCMSView: React.FC<AdminCMSViewProps> = ({
     }
     setIsAddingFeat(false);
     setEditingFeat(null);
+    saveToCloud();
   };
 
   return (
@@ -666,14 +680,83 @@ export const AdminCMSView: React.FC<AdminCMSViewProps> = ({
 
         {/* Global Action Buttons */}
         <div className="flex items-center gap-2 md:gap-3">
+          {/* PROMINENT HEADER SAVE OPTION (User Requested) */}
+          <button
+            id="admin-header-save-button"
+            onClick={async () => {
+              const ok = await saveToCloud();
+              if (ok) {
+                setJustSaved(true);
+                setTimeout(() => setJustSaved(false), 3000);
+                showToast('✅ Saved successfully! Live across all mobiles and devices.');
+              } else {
+                showToast('❌ Save failed. Please try again.');
+              }
+            }}
+            disabled={isSavingToCloud}
+            className={`flex items-center gap-2 px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-xl text-xs font-mono font-bold transition-all shadow-lg active:scale-95 cursor-pointer ${
+              justSaved
+                ? 'bg-emerald-400 text-black ring-2 ring-emerald-300'
+                : hasUnsavedChanges
+                ? 'bg-emerald-500 hover:bg-emerald-400 text-black ring-2 ring-emerald-300 animate-pulse shadow-emerald-500/50'
+                : isSavingToCloud
+                ? 'bg-sky-600 text-white cursor-wait'
+                : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-950/40 hover:shadow-emerald-600/30'
+            }`}
+            title="Save all edits and publish live across all mobiles, devices, and website"
+          >
+            {isSavingToCloud ? (
+              <>
+                <RefreshCw className="w-4 h-4 animate-spin text-white" />
+                <span>Saving...</span>
+              </>
+            ) : justSaved ? (
+              <>
+                <CheckCircle className="w-4 h-4 text-black" />
+                <span>Saved to Live Site!</span>
+              </>
+            ) : hasUnsavedChanges ? (
+              <>
+                <Save className="w-4 h-4 text-black" />
+                <span>Save Changes</span>
+                <span className="w-2 h-2 rounded-full bg-black animate-ping" />
+              </>
+            ) : (
+              <>
+                <Save className="w-4 h-4 text-white" />
+                <span>Save Changes</span>
+              </>
+            )}
+          </button>
+
+          {/* Live Cloud Multi-Device Sync Indicator */}
+          <div className="hidden lg:flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs font-mono">
+            {isSavingToCloud ? (
+              <span className="flex items-center gap-1.5 text-sky-400">
+                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                <span>Syncing Cloud...</span>
+              </span>
+            ) : isCloudSynced ? (
+              <span className="flex items-center gap-1.5 text-emerald-400" title="Changes are automatically persisted and available on all devices/mobiles">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <span>Live on All Mobiles</span>
+              </span>
+            ) : (
+              <span className="flex items-center gap-1.5 text-amber-400">
+                <span className="w-2 h-2 rounded-full bg-amber-400" />
+                <span>Offline / Local</span>
+              </span>
+            )}
+          </div>
+
           {onReplayBoot && (
             <button
               onClick={onReplayBoot}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white text-white hover:text-black transition-all text-xs font-mono font-bold"
-              title="Preview Apple Power-On Boot Animation"
+              title="Preview Loading Screen Animation"
             >
               <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-              <span>Apple Boot Screen</span>
+              <span>Replay Loading</span>
             </button>
           )}
 
@@ -812,14 +895,19 @@ export const AdminCMSView: React.FC<AdminCMSViewProps> = ({
           </div>
 
           {/* Quick Info Box */}
-          <div className="p-3 rounded-xl bg-white/5 border border-white/10 text-[11px] font-mono text-neutral-400 space-y-1">
-            <div className="flex items-center gap-1.5 text-emerald-400 font-bold">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Full Control (CMS)</span>
+          <div className="p-3 rounded-xl bg-emerald-950/25 border border-emerald-500/20 text-[11px] font-mono text-neutral-300 space-y-1.5">
+            <div className="flex items-center gap-1.5 text-emerald-400 font-bold text-xs">
+              <Cloud className="w-3.5 h-3.5" />
+              <span>Multi-Device Sync</span>
             </div>
-            <p className="text-[10px] text-neutral-400 leading-tight">
-              All adds & deletes instantly update your live pages.
+            <p className="text-[10px] text-neutral-300 leading-tight">
+              Changes made here (add, edit, delete) sync immediately to the server. Any mobile or device visiting the site sees your updates instantly!
             </p>
+            {lastSyncedTime && (
+              <p className="text-[9px] text-emerald-400/80 font-mono">
+                Synced: {lastSyncedTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+              </p>
+            )}
           </div>
         </nav>
 
@@ -1059,12 +1147,24 @@ export const AdminCMSView: React.FC<AdminCMSViewProps> = ({
                   </div>
                 </div>
 
-                <div className="pt-2 flex justify-end">
+                <div className="pt-2 flex items-center justify-between">
+                  <p className="text-xs font-mono text-neutral-400">
+                    {hasUnsavedChanges ? '● Unsaved changes pending' : '✓ All changes saved'}
+                  </p>
                   <button
-                    onClick={() => showToast('Profile details updated!')}
-                    className="px-5 py-2 rounded-lg bg-white text-black font-mono text-xs font-bold hover:bg-neutral-200 transition-colors flex items-center gap-1.5"
+                    onClick={async () => {
+                      const ok = await saveToCloud();
+                      if (ok) {
+                        setJustSaved(true);
+                        setTimeout(() => setJustSaved(false), 2500);
+                        showToast('Profile details saved & live across all mobiles!');
+                      } else {
+                        showToast('Save failed. Please retry.');
+                      }
+                    }}
+                    className="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-mono text-xs font-bold transition-all flex items-center gap-2 shadow-lg cursor-pointer"
                   >
-                    <Save className="w-3.5 h-3.5" />
+                    <Save className="w-4 h-4" />
                     <span>Save Profile Changes</span>
                   </button>
                 </div>
@@ -1608,10 +1708,18 @@ export const AdminCMSView: React.FC<AdminCMSViewProps> = ({
 
                 <div className="flex justify-end">
                   <button
-                    onClick={() => showToast('About paragraphs saved!')}
-                    className="px-5 py-2 rounded-lg bg-white text-black font-mono text-xs font-bold hover:bg-neutral-200 transition-colors flex items-center gap-1.5"
+                    type="button"
+                    onClick={async () => {
+                      const ok = await saveToCloud();
+                      if (ok) {
+                        setJustSaved(true);
+                        setTimeout(() => setJustSaved(false), 2500);
+                        showToast('About narrative saved & live across all mobiles!');
+                      }
+                    }}
+                    className="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-mono text-xs font-bold transition-all flex items-center gap-2 shadow-lg cursor-pointer"
                   >
-                    <Save className="w-3.5 h-3.5" />
+                    <Save className="w-4 h-4" />
                     <span>Save About Content</span>
                   </button>
                 </div>
