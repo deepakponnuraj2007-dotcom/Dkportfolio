@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { SectionId } from './types';
 import { PortfolioProvider } from './context/PortfolioContext';
@@ -19,8 +19,71 @@ function PortfolioApp() {
   const [isLoading, setIsLoading] = useState(true);
   const [currentSection, setCurrentSection] = useState<SectionId>('home');
   const [isHomeIntroOpen, setIsHomeIntroOpen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [isAdminAuthModalOpen, setIsAdminAuthModalOpen] = useState(false);
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
+  const wasNativeFullscreenRef = useRef(false);
+
+  const activateFullscreen = () => {
+    try {
+      const doc = document as any;
+      const docEl = (document.documentElement || document.body) as any;
+      const isAlreadyFs = !!(
+        doc.fullscreenElement ||
+        doc.webkitFullscreenElement ||
+        doc.mozFullScreenElement ||
+        doc.msFullscreenElement
+      );
+
+      if (!isAlreadyFs) {
+        const req =
+          docEl.requestFullscreen ||
+          docEl.webkitRequestFullscreen ||
+          docEl.mozRequestFullScreen ||
+          docEl.msRequestFullscreen;
+
+        if (req) {
+          const res = req.call(docEl, { navigationUI: 'hide' });
+          if (res && typeof res.catch === 'function') {
+            res.catch(() => {
+              try {
+                if (document.body && (document.body as any).requestFullscreen) {
+                  (document.body as any).requestFullscreen().catch(() => {});
+                }
+              } catch {}
+            });
+          }
+        }
+      }
+    } catch {}
+  };
+
+  const deactivateFullscreen = () => {
+    try {
+      const doc = document as any;
+      const isFs = !!(
+        doc.fullscreenElement ||
+        doc.webkitFullscreenElement ||
+        doc.mozFullScreenElement ||
+        doc.msFullscreenElement
+      );
+
+      if (isFs) {
+        const exit =
+          doc.exitFullscreen ||
+          doc.webkitExitFullscreen ||
+          doc.mozCancelFullScreen ||
+          doc.msExitFullscreen;
+
+        if (exit) {
+          const res = exit.call(doc);
+          if (res && typeof res.catch === 'function') {
+            res.catch(() => {});
+          }
+        }
+      }
+    } catch {}
+  };
 
   const handleNavigate = (section: SectionId) => {
     if (section === 'home') {
@@ -30,43 +93,22 @@ function PortfolioApp() {
   };
 
   const handleToggleHomeIntro = () => {
-    // Request full screen when Yin-Yang is touched
+    // Touching or clicking Yin-Yang triggers Fullscreen Mode ON + opens split view
     if (!isHomeIntroOpen) {
-      const docEl = document.documentElement as any;
-      if (!document.fullscreenElement) {
-        if (docEl.requestFullscreen) {
-          docEl.requestFullscreen().catch(() => {});
-        } else if (docEl.webkitRequestFullscreen) {
-          docEl.webkitRequestFullscreen().catch(() => {});
-        } else if (docEl.mozRequestFullScreen) {
-          docEl.mozRequestFullScreen().catch(() => {});
-        } else if (docEl.msRequestFullscreen) {
-          docEl.msRequestFullscreen().catch(() => {});
-        }
-      }
+      activateFullscreen();
+      setIsFullscreen(true);
       setIsHomeIntroOpen(true);
     } else {
-      // Just return to normal home yin-yang view, keep fullscreen mode active (do not exit fullscreen)
+      // Return to normal home Yin-Yang view
+      deactivateFullscreen();
+      setIsFullscreen(false);
       setIsHomeIntroOpen(false);
     }
   };
 
   const triggerFullscreenMode = () => {
-    try {
-      const doc = document as any;
-      const docEl = document.documentElement as any;
-      if (!doc.fullscreenElement && !doc.webkitFullscreenElement && !doc.mozFullScreenElement && !doc.msFullscreenElement) {
-        if (docEl.requestFullscreen) {
-          docEl.requestFullscreen().catch(() => {});
-        } else if (docEl.webkitRequestFullscreen) {
-          docEl.webkitRequestFullscreen().catch(() => {});
-        } else if (docEl.mozRequestFullScreen) {
-          docEl.mozRequestFullScreen().catch(() => {});
-        } else if (docEl.msRequestFullscreen) {
-          docEl.msRequestFullscreen().catch(() => {});
-        }
-      }
-    } catch {}
+    activateFullscreen();
+    setIsFullscreen(true);
   };
 
   // Require password Deepak@2007 to enter Admin page
@@ -100,7 +142,20 @@ function PortfolioApp() {
   // Sync state when exiting fullscreen natively (e.g. browser Esc key)
   useEffect(() => {
     const handleFullscreenChange = () => {
-      if (!document.fullscreenElement) {
+      const doc = document as any;
+      const isFs = !!(
+        doc.fullscreenElement ||
+        doc.webkitFullscreenElement ||
+        doc.mozFullScreenElement ||
+        doc.msFullscreenElement
+      );
+
+      if (isFs) {
+        wasNativeFullscreenRef.current = true;
+        setIsFullscreen(true);
+      } else if (wasNativeFullscreenRef.current) {
+        wasNativeFullscreenRef.current = false;
+        setIsFullscreen(false);
         setIsHomeIntroOpen(false);
       }
     };
@@ -128,29 +183,10 @@ function PortfolioApp() {
         return;
       }
 
+      // ESC button returns fullscreen and split view back to normal home Yin-Yang view
       if (e.key === 'Escape') {
-        // Exit fullscreen if active across all browser engines
-        const doc = document as any;
-        const isFs = !!(
-          doc.fullscreenElement ||
-          doc.webkitFullscreenElement ||
-          doc.mozFullScreenElement ||
-          doc.msFullscreenElement
-        );
-
-        if (isFs) {
-          if (doc.exitFullscreen) {
-            doc.exitFullscreen().catch(() => {});
-          } else if (doc.webkitExitFullscreen) {
-            doc.webkitExitFullscreen().catch(() => {});
-          } else if (doc.mozCancelFullScreen) {
-            doc.mozCancelFullScreen().catch(() => {});
-          } else if (doc.msExitFullscreen) {
-            doc.msExitFullscreen().catch(() => {});
-          }
-        }
-
-        // Return to normal home state (Yin-Yang center view)
+        deactivateFullscreen();
+        setIsFullscreen(false);
         setIsHomeIntroOpen(false);
         if (currentSection !== 'home') {
           setCurrentSection('home');
@@ -173,7 +209,9 @@ function PortfolioApp() {
     <div
       className={`relative w-full h-screen overflow-hidden ${
         isDarkTheme ? 'bg-black text-white' : 'bg-[#FAF7F2] text-black'
-      } font-sans select-none`}
+      } font-sans select-none ${
+        isFullscreen ? 'fixed inset-0 z-50 w-screen h-screen' : ''
+      }`}
     >
       {/* Global Navbar (Always available for top-center Back Arrow & Logo) */}
       <Navbar
@@ -219,6 +257,7 @@ function PortfolioApp() {
                 isSplitOpen={isHomeIntroOpen}
                 onToggleSplit={handleToggleHomeIntro}
                 onOpenAdmin={handleOpenAdmin}
+                isFullscreen={isFullscreen}
               />
             </motion.div>
           )}

@@ -4,6 +4,7 @@ import { usePortfolio } from '../context/PortfolioContext';
 import { ProjectItem } from '../types';
 import { YinYang } from './YinYang';
 import { ProjectDocumentIcon } from './ProjectDocumentIcon';
+import { PaperScrollCard } from './PaperScrollCard';
 
 interface WorkViewProps {
   onBack?: () => void;
@@ -95,7 +96,7 @@ export const WorkView: React.FC<WorkViewProps> = () => {
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseLeave}
-        className={`w-full h-full overflow-x-auto overflow-y-hidden no-scrollbar flex items-center gap-6 sm:gap-8 md:gap-10 px-6 sm:px-12 md:px-24 pt-14 pb-12 z-10 cursor-${
+        className={`w-full h-full overflow-x-auto overflow-y-hidden no-scrollbar flex items-center gap-6 sm:gap-8 md:gap-10 px-6 sm:px-12 md:px-24 pt-24 sm:pt-28 pb-12 z-10 cursor-${
           isDragging ? 'grabbing' : 'grab'
         }`}
         style={{ scrollBehavior: isDragging ? 'auto' : 'smooth' }}
@@ -107,107 +108,106 @@ export const WorkView: React.FC<WorkViewProps> = () => {
               key={project.id}
               onMouseEnter={() => setHoveredCardId(project.id)}
               onMouseLeave={() => setHoveredCardId(null)}
-              className={`shrink-0 w-[270px] sm:w-[300px] md:w-[330px] h-[min(410px,calc(100vh-108px))] min-h-[260px] p-4 sm:p-5 md:p-6 flex flex-col justify-between transition-colors duration-300 rounded-2xl relative group ${
-                isHovered
-                  ? 'bg-[#111113] text-white border-2 border-white'
-                  : 'bg-white text-black border-2 border-white'
-              }`}
+              className="shrink-0"
             >
-              {/* Top Accent Icon & Tags */}
-              <div className="min-h-0 flex flex-col">
-                <div className="flex items-center justify-between mb-2 sm:mb-3 shrink-0">
-                  <div className="flex items-center gap-1.5">
+              <PaperScrollCard
+                isHovered={isHovered}
+                className="w-[335px] sm:w-[375px] md:w-[410px] h-[min(520px,calc(100vh-120px))] min-h-[450px]"
+              >
+                {/* Top Accent Icon & Tags */}
+                <div className="flex flex-col">
+                  <div className="flex items-center justify-between mb-2 shrink-0">
                     <span
-                      className={`text-[11px] font-mono tracking-widest uppercase ${
-                        isHovered ? 'text-neutral-400' : 'text-neutral-500'
+                      className={`text-[10px] sm:text-[10.5px] font-mono tracking-widest uppercase font-semibold transition-colors duration-300 ${
+                        isHovered ? 'text-neutral-300' : 'text-neutral-500'
                       }`}
                     >
                       Featured Project
                     </span>
+                    <ProjectDocumentIcon
+                      size={28}
+                      documentColor={isHovered ? '#FFFFFF' : '#334155'}
+                      gearColor={isHovered ? '#38BDF8' : '#0284C7'}
+                      documentFill={isHovered ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.02)'}
+                      gearFill={isHovered ? 'rgba(56, 189, 248, 0.25)' : 'rgba(2, 132, 199, 0.12)'}
+                      spinGear={isHovered}
+                      className="shrink-0 transition-transform duration-300 group-hover:scale-110 drop-shadow-xs"
+                    />
                   </div>
-                  <ProjectDocumentIcon
-                    size={36}
-                    documentColor={isHovered ? '#94a3b8' : '#334155'}
-                    gearColor={isHovered ? '#38bdf8' : '#0284c7'}
-                    documentFill={isHovered ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.02)'}
-                    gearFill={isHovered ? 'rgba(56, 189, 248, 0.15)' : 'rgba(2, 132, 199, 0.1)'}
-                    spinGear={isHovered}
-                    className="shrink-0 transition-transform duration-300 group-hover:scale-110 drop-shadow-xs"
-                  />
+
+                  {/* Project Title */}
+                  <h3
+                    className={`text-xl sm:text-[22px] font-black tracking-tight mb-2 leading-tight font-display transition-colors duration-300 ${
+                      isHovered ? 'text-white' : 'text-black'
+                    }`}
+                  >
+                    {project.title}
+                  </h3>
+
+                  {/* Project Description (Full content completely displayed) */}
+                  <p
+                    className={`text-xs sm:text-[13px] leading-relaxed mb-3.5 font-normal transition-colors duration-300 ${
+                      isHovered ? 'text-neutral-200' : 'text-neutral-700'
+                    }`}
+                  >
+                    {project.description}
+                  </p>
                 </div>
 
-                {/* Project Title */}
-                <h3
-                  className={`text-lg sm:text-xl md:text-2xl font-extrabold tracking-tight mb-2 line-clamp-2 leading-tight shrink-0 ${
-                    isHovered ? 'text-white' : 'text-black'
-                  }`}
-                >
-                  {project.title}
-                </h3>
+                {/* Tags and Action Buttons */}
+                <div className="shrink-0 pt-1">
+                  {/* Tech Tags - Fully displayed */}
+                  <div className="flex flex-wrap gap-1.5 mb-3 sm:mb-3.5">
+                    {project.tags.map((tag, idx) => (
+                      <span
+                        key={idx}
+                        className={`text-[9.5px] sm:text-[10.5px] font-mono px-2 py-0.5 rounded-md font-medium transition-colors duration-300 ${
+                          isHovered
+                            ? 'bg-[#1A1A20] text-neutral-200 border border-white/30'
+                            : 'bg-neutral-100 text-neutral-800 border border-black/15'
+                        }`}
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
 
-                {/* Project Description */}
-                <p
-                  className={`text-xs sm:text-sm leading-relaxed mb-3 font-normal line-clamp-3 sm:line-clamp-4 ${
-                    isHovered ? 'text-neutral-300' : 'text-neutral-700'
-                  }`}
-                >
-                  {project.description}
-                </p>
-              </div>
-
-              {/* Tags and Action Buttons */}
-              <div className="shrink-0">
-                {/* Tech Tags */}
-                <div className="flex flex-wrap gap-1.5 mb-3 sm:mb-4 max-h-[52px] overflow-hidden">
-                  {project.tags.map((tag, idx) => (
-                    <span
-                      key={idx}
-                      className={`text-[10px] sm:text-[11px] font-mono px-2 py-0.5 rounded-md ${
+                  {/* Bottom Buttons */}
+                  <div
+                    className={`flex items-center justify-between pt-2.5 sm:pt-3 border-t transition-colors duration-300 ${
+                      isHovered ? 'border-white/20' : 'border-black/15'
+                    }`}
+                  >
+                    <a
+                      href={project.liveUrl || project.githubUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`flex items-center gap-2 px-4 sm:px-5 py-1.5 sm:py-2 text-xs sm:text-sm font-bold rounded-lg transition-all duration-200 active:scale-95 shadow-xs ${
                         isHovered
-                          ? 'bg-black text-neutral-200 border border-white/25'
-                          : 'bg-neutral-100 text-neutral-800 border border-black/15'
+                          ? 'bg-white text-black hover:bg-neutral-200'
+                          : 'bg-black text-white hover:bg-neutral-800'
                       }`}
                     >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
+                      <span>Visit</span>
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
 
-                {/* Bottom Buttons */}
-                <div
-                  className={`flex items-center justify-between pt-2.5 sm:pt-3 border-t ${
-                    isHovered ? 'border-white/20' : 'border-black/15'
-                  }`}
-                >
-                  <a
-                    href={project.liveUrl || project.githubUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={`flex items-center gap-2 px-4 sm:px-5 py-1.5 sm:py-2 text-xs sm:text-sm font-bold rounded-lg transition-all duration-200 active:scale-95 ${
-                      isHovered
-                        ? 'bg-white text-black hover:bg-neutral-200'
-                        : 'bg-black text-white hover:bg-neutral-800'
-                    }`}
-                  >
-                    <span>Visit</span>
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </a>
-
-                  <a
-                    href={project.githubUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={`p-1.5 sm:p-2 rounded-lg transition-colors duration-200 ${
-                      isHovered
-                        ? 'text-white hover:bg-white/10'
-                        : 'text-black hover:bg-black/10'
-                    }`}
-                    title="View Source Code"
-                  >
-                    <Github className="w-5 h-5" />
-                  </a>
+                    <a
+                      href={project.githubUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`p-1.5 sm:p-2 rounded-lg transition-colors duration-200 ${
+                        isHovered
+                          ? 'text-white hover:bg-white/10'
+                          : 'text-black hover:bg-black/10'
+                      }`}
+                      title="View Source Code"
+                    >
+                      <Github className="w-5 h-5" />
+                    </a>
+                  </div>
                 </div>
-              </div>
+              </PaperScrollCard>
             </div>
           );
         })}

@@ -154,19 +154,25 @@ export const Navbar: React.FC<NavbarProps> = ({
           initial={{ y: -60, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.7, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-          className="pointer-events-auto absolute left-1/2 -translate-x-1/2 top-6 md:top-8"
+          className="pointer-events-auto absolute left-1/2 -translate-x-1/2 top-5 md:top-7 flex flex-col items-center gap-1.5"
         >
           <button
             onClick={handleBackClick}
-            className={`w-10 h-10 md:w-11 md:h-11 rounded-full border flex items-center justify-center transition-all duration-300 active:scale-95 group shadow-xs ${
+            className={`w-10 h-10 md:w-11 md:h-11 rounded-full border flex items-center justify-center transition-all duration-300 active:scale-95 group shadow-md cursor-pointer ${
               isDark
-                ? 'bg-black text-white border-white/40 hover:border-white hover:bg-white hover:text-black'
-                : 'bg-[#FAF7F2] text-black border-black/40 hover:border-black hover:bg-black hover:text-white'
+                ? 'bg-black text-white border-white/50 hover:border-white hover:bg-white hover:text-black'
+                : 'bg-[#FAF7F2] text-black border-black/50 hover:border-black hover:bg-black hover:text-white'
             }`}
             aria-label="Back"
+            title="Press ESC on keyboard or click to return to normal"
           >
             <ArrowLeft className="w-5 h-5 transition-transform duration-200 group-hover:-translate-x-0.5" />
           </button>
+          {isHomeIntroOpen && (
+            <span className="text-[9px] font-mono font-bold tracking-widest uppercase px-2 py-0.5 rounded-full bg-neutral-900/90 text-neutral-300 border border-neutral-700/80 shadow-xs pointer-events-none">
+              ESC
+            </span>
+          )}
         </motion.div>
 
         {/* Top-Right 'Say hi..' Button (Only on Page 1 / Home) */}

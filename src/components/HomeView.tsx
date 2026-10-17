@@ -8,19 +8,21 @@ interface HomeViewProps {
   isSplitOpen: boolean;
   onToggleSplit: () => void;
   onOpenAdmin: () => void;
+  isFullscreen?: boolean;
 }
 
 export const HomeView: React.FC<HomeViewProps> = ({
   isSplitOpen,
   onToggleSplit,
   onOpenAdmin,
+  isFullscreen = false,
 }) => {
   const { personalInfo } = usePortfolio();
-  const [isDragging, setIsDragging] = React.useState(false);
-  const [isExploreHidden, setIsExploreHidden] = React.useState(false);
   const [isDesktop, setIsDesktop] = React.useState(
     typeof window !== 'undefined' ? window.innerWidth >= 768 : true
   );
+  const [isDragging, setIsDragging] = React.useState(false);
+  const lastTriggerTime = React.useRef(0);
 
   React.useEffect(() => {
     const handleResize = () => setIsDesktop(window.innerWidth >= 768);
@@ -28,40 +30,13 @@ export const HomeView: React.FC<HomeViewProps> = ({
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Reset explore label visibility when returning to home view
-  React.useEffect(() => {
-    if (!isSplitOpen) {
-      setIsExploreHidden(false);
-    }
-  }, [isSplitOpen]);
-
-  const enterFullscreen = () => {
-    try {
-      const doc = document as any;
-      const docEl = document.documentElement as any;
-      if (
-        !doc.fullscreenElement &&
-        !doc.webkitFullscreenElement &&
-        !doc.mozFullScreenElement &&
-        !doc.msFullscreenElement
-      ) {
-        const req =
-          docEl.requestFullscreen ||
-          docEl.webkitRequestFullscreen ||
-          docEl.mozRequestFullScreen ||
-          docEl.msRequestFullscreen;
-        if (req) {
-          req.call(docEl).catch(() => {});
-        }
-      }
-    } catch {}
-  };
-
   const handleLogoTouchOrClick = (e?: React.SyntheticEvent) => {
     if (e) {
       e.stopPropagation();
     }
-    enterFullscreen();
+    const now = Date.now();
+    if (now - lastTriggerTime.current < 350) return;
+    lastTriggerTime.current = now;
     onToggleSplit();
   };
 
@@ -272,6 +247,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
               </motion.div>
             </div>
 
+
             {/* Floating Bottom-Right Yin-Yang to Return */}
             <motion.div
               initial={{ opacity: 0, scale: 0.6, rotate: -70 }}
@@ -286,7 +262,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
               >
                 <YinYang size={64} onClick={onToggleSplit} border />
                 <span className="text-[10px] font-mono tracking-[0.22em] text-neutral-500 mt-2 uppercase transition-colors duration-200 group-hover:text-black">
-                  Return
+                  Return (ESC)
                 </span>
               </div>
             </motion.div>
@@ -313,35 +289,44 @@ export const HomeView: React.FC<HomeViewProps> = ({
               transition={{ duration: 0.85, ease: [0.16, 1, 0.3, 1] }}
               className="flex flex-col items-center justify-center group select-none"
             >
-              {/* Draggable Yin-Yang Center Logo */}
+              {/* Draggable & Clickable Center Yin-Yang Logo (Fullscreen Mode Trigger) */}
               <motion.div
                 drag
                 dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
                 dragElastic={0.45}
-                dragTransition={{ bounceStiffness: 400, bounceDamping: 25 }}
-                onDragStart={() => {
+                dragTransition={{ bounceStiffness: 450, bounceDamping: 25 }}
+                draggable={false}
+                onDragStart={(e) => {
+                  e.preventDefault();
                   setIsDragging(true);
-                  setIsExploreHidden(true);
-                }}
-                onDrag={() => {
-                  setIsExploreHidden(true);
                 }}
                 onDragEnd={(_e, info) => {
                   setTimeout(() => setIsDragging(false), 80);
-                  if (Math.hypot(info.offset.x, info.offset.y) > 20) {
+                  if (Math.hypot(info.offset.x, info.offset.y) > 35) {
                     handleLogoTouchOrClick();
                   }
                 }}
-                whileTap={{ scale: 0.95 }}
-                whileHover={{ scale: 1.05 }}
-                onPointerDown={() => {
-                  // Direct user activation for fullscreen
-                  enterFullscreen();
+                onTap={(e) => {
+                  if (!isDragging) {
+                    handleLogoTouchOrClick(e as any);
+                  }
                 }}
                 onClick={(e) => {
-                  handleLogoTouchOrClick(e);
+                  if (!isDragging) {
+                    handleLogoTouchOrClick(e);
+                  }
                 }}
-                className="cursor-pointer active:cursor-grabbing touch-manipulation select-none"
+                whileTap={{ scale: 0.94 }}
+                whileHover={{ scale: 1.05 }}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handleLogoTouchOrClick(e);
+                  }
+                }}
+                className="cursor-grab active:cursor-grabbing touch-none select-none p-3 rounded-full focus:outline-hidden"
               >
                 <YinYang
                   size={140}
@@ -349,18 +334,23 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 />
               </motion.div>
 
-              {/* Click to Explore label - Hidden immediately upon dragging */}
-              <div
-                className={`mt-7 flex flex-col items-center gap-1.5 pointer-events-none transition-all duration-400 ease-out ${
-                  isExploreHidden || isDragging
-                    ? 'opacity-0 scale-75 -translate-y-2 pointer-events-none'
-                    : 'opacity-100 scale-100 translate-y-0'
-                }`}
-              >
-                <span className="text-[11px] font-mono font-medium tracking-[0.28em] uppercase text-neutral-400 group-hover:text-black transition-colors duration-300">
-                  Click to Explore
+              {/* Shadow & "click here" text beneath the logo */}
+              <div className="mt-3 flex flex-col items-center pointer-events-none select-none">
+                {/* Soft radial oval shadow beneath logo */}
+                <div
+                  className={`w-28 h-3 rounded-[100%] bg-black/10 blur-[3px] transition-all duration-300 ${
+                    isDragging ? 'scale-75 opacity-25 blur-[5px]' : 'scale-100 opacity-100'
+                  }`}
+                />
+
+                {/* Shadow-style "click here" text */}
+                <span
+                  className={`mt-2.5 text-[11px] font-mono tracking-[0.28em] uppercase text-black/35 font-medium transition-all duration-300 drop-shadow-[0_1px_2px_rgba(0,0,0,0.06)] ${
+                    isDragging ? 'opacity-20 scale-90 -translate-y-1' : 'opacity-100 scale-100 translate-y-0 group-hover:text-black/60'
+                  }`}
+                >
+                  click here
                 </span>
-                <div className="h-[1.5px] w-6 bg-neutral-300 group-hover:w-12 group-hover:bg-black transition-all duration-300" />
               </div>
             </motion.div>
           </motion.div>

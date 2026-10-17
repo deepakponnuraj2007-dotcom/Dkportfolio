@@ -24,13 +24,16 @@ export const YinYang: React.FC<YinYangProps> = ({
       onClick={onClick}
       style={{ width: size, height: size }}
       className={`relative inline-block cursor-pointer select-none transition-transform duration-300 hover:scale-105 ${className}`}
-      title="Interactive Emblem - Click to Explore"
+      draggable={false}
+      onDragStart={(e) => e.preventDefault()}
     >
       <svg
         viewBox="0 0 200 200"
         width={size}
         height={size}
-        className="w-full h-full drop-shadow-md select-none"
+        draggable={false}
+        onDragStart={(e) => e.preventDefault()}
+        className="w-full h-full drop-shadow-md select-none pointer-events-none"
         style={{
           animation: isSpinning ? 'spin-slow 10s linear infinite' : 'none',
         }}
