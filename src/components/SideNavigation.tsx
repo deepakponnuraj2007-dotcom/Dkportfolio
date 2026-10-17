@@ -81,7 +81,6 @@ export const SideNavigation: React.FC<SideNavigationProps> = ({
             className={`p-1 transition-transform duration-200 hover:scale-125 ${
               isDark ? 'text-white/80 hover:text-white' : 'text-black/80 hover:text-black'
             }`}
-            title="LinkedIn"
           >
             <Linkedin className="w-3.5 h-3.5 md:w-4 md:h-4" />
           </a>
@@ -92,7 +91,6 @@ export const SideNavigation: React.FC<SideNavigationProps> = ({
             className={`p-1 transition-transform duration-200 hover:scale-125 ${
               isDark ? 'text-white/80 hover:text-white' : 'text-black/80 hover:text-black'
             }`}
-            title="GitHub"
           >
             <Github className="w-3.5 h-3.5 md:w-4 md:h-4" />
           </a>
@@ -103,7 +101,6 @@ export const SideNavigation: React.FC<SideNavigationProps> = ({
             className={`p-1 transition-transform duration-200 hover:scale-125 ${
               isDark ? 'text-white/80 hover:text-white' : 'text-black/80 hover:text-black'
             }`}
-            title="Instagram"
           >
             <Instagram className="w-3.5 h-3.5 md:w-4 md:h-4" />
           </a>
@@ -114,7 +111,6 @@ export const SideNavigation: React.FC<SideNavigationProps> = ({
             className={`p-1 transition-transform duration-200 hover:scale-125 ${
               isDark ? 'text-white/80 hover:text-white' : 'text-black/80 hover:text-black'
             }`}
-            title="Facebook"
           >
             <Facebook className="w-3.5 h-3.5 md:w-4 md:h-4" />
           </a>

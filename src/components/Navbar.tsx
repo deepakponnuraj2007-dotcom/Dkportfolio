@@ -35,11 +35,10 @@ export const Navbar: React.FC<NavbarProps> = ({
     currentSection === 'projects';
 
   const handleBackClick = () => {
-    if (isHomeIntroOpen && onToggleHomeIntro) {
-      onToggleHomeIntro();
-    } else {
-      onNavigate('home');
+    if (isHomeIntroOpen) {
+      return;
     }
+    onNavigate('home');
   };
 
   return (
@@ -164,15 +163,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                 : 'bg-[#FAF7F2] text-black border-black/50 hover:border-black hover:bg-black hover:text-white'
             }`}
             aria-label="Back"
-            title="Press ESC on keyboard or click to return to normal"
           >
             <ArrowLeft className="w-5 h-5 transition-transform duration-200 group-hover:-translate-x-0.5" />
           </button>
-          {isHomeIntroOpen && (
-            <span className="text-[9px] font-mono font-bold tracking-widest uppercase px-2 py-0.5 rounded-full bg-neutral-900/90 text-neutral-300 border border-neutral-700/80 shadow-xs pointer-events-none">
-              ESC
-            </span>
-          )}
         </motion.div>
 
         {/* Top-Right 'Say hi..' Button (Only on Page 1 / Home) */}

@@ -88,6 +88,8 @@ function PortfolioApp() {
   const handleNavigate = (section: SectionId) => {
     if (section === 'home') {
       setIsHomeIntroOpen(false);
+      deactivateFullscreen();
+      setIsFullscreen(false);
     }
     setCurrentSection(section);
   };
@@ -185,6 +187,9 @@ function PortfolioApp() {
 
       // ESC button returns fullscreen and split view back to normal home Yin-Yang view
       if (e.key === 'Escape') {
+        try {
+          window.getSelection()?.removeAllRanges();
+        } catch {}
         deactivateFullscreen();
         setIsFullscreen(false);
         setIsHomeIntroOpen(false);
@@ -345,7 +350,9 @@ function PortfolioApp() {
               <AdminCMSView
                 onBackToPortfolio={() => {
                   setCurrentSection('home');
-                  setIsHomeIntroOpen(true);
+                  setIsHomeIntroOpen(false);
+                  deactivateFullscreen();
+                  setIsFullscreen(false);
                 }}
                 onLockAdmin={handleLockAdmin}
                 onReplayBoot={() => setIsLoading(true)}

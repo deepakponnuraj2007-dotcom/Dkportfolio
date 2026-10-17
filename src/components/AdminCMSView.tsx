@@ -734,11 +734,10 @@ export const AdminCMSView: React.FC<AdminCMSViewProps> = ({
         <div className="flex items-center gap-3 md:gap-4">
           <button
             onClick={onBackToPortfolio}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white text-white hover:text-black transition-all text-xs font-mono font-bold"
+            className="w-10 h-10 rounded-full border border-white/30 bg-black text-white flex items-center justify-center hover:bg-white hover:text-black transition-all shadow-md cursor-pointer shrink-0"
             title="Return to Portfolio View"
           >
-            <ArrowLeft className="w-4 h-4" />
-            <span>View Portfolio</span>
+            <ArrowLeft className="w-5 h-5" />
           </button>
 
           {onLockAdmin && (
