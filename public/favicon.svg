@@ -1,0 +1,20 @@
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M20 34C20 23.5 28.5 15 39 15H217C227.5 15 236 23.5 236 34C236 44.5 227.5 53 217 53H39C28.5 53 20 44.5 20 34Z" fill="#D6E7F4"/>
+  <path d="M30 34C30 25.7 36.7 19 45 19H211C219.3 19 226 25.7 226 34C226 42.3 219.3 49 211 49H45C36.7 49 30 42.3 30 34Z" fill="#E5F1FA"/>
+  <path d="M32 38H224V218C224 220 223 222 221 223H35C33 222 32 220 32 218V38Z" fill="#EDF4FA"/>
+  <path d="M24 222C24 211.5 32.5 203 43 203H213C223.5 203 232 211.5 232 222C232 232.5 223.5 241 213 241H43C32.5 241 24 232.5 24 222Z" fill="#D6E7F4"/>
+  <path d="M34 222C34 213.7 40.7 207 49 207H207C215.3 207 222 213.7 222 222C222 230.3 215.3 237 207 237H49C40.7 237 34 230.3 34 222Z" fill="#E5F1FA"/>
+  <text x="50" y="78" fill="#5C93E6" font-family="-apple-system, sans-serif" font-weight="800" font-size="30" letter-spacing="2">PROJECT</text>
+  <rect x="52" y="96" width="76" height="22" rx="4" fill="#B8F244"/>
+  <rect x="50" y="138" width="46" height="7.5" rx="3.75" fill="#6EA8FE"/>
+  <rect x="50" y="158" width="84" height="7.5" rx="3.75" fill="#6EA8FE"/>
+  <rect x="50" y="178" width="84" height="7.5" rx="3.75" fill="#6EA8FE"/>
+  <rect x="50" y="198" width="84" height="7.5" rx="3.75" fill="#6EA8FE"/>
+  <g transform="translate(196, 160)">
+    <path d="M -12 -50 L 12 -50 L 14 -39 L 24 -35 L 35 -43 L 49 -29 L 41 -18 L 45 -8 L 56 -6 L 56 6 L 45 8 L 41 18 L 49 29 L 35 43 L 24 35 L 14 39 L 12 50 L -12 50 L -14 39 L -24 35 L -35 43 L -49 29 L -41 18 L -45 8 L -56 6 L -56 -6 L -45 -8 L -41 -18 L -49 -29 L -35 -43 L -24 -35 L -14 -39 Z" fill="#B8F244"/>
+    <circle cx="0" cy="0" r="21" fill="#EDF4FA" stroke="#B8F244" stroke-width="3"/>
+    <rect x="-6" y="-15" width="12" height="30" rx="2" fill="#000000"/>
+    <rect x="-15" y="-6" width="30" height="12" rx="2" fill="#000000"/>
+    <circle cx="0" cy="0" r="4.5" fill="#000000"/>
+  </g>
+</svg>

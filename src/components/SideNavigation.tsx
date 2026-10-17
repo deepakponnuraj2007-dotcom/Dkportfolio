@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { Linkedin, Github, Instagram, Facebook, Anchor } from 'lucide-react';
 import { SectionId } from '../types';
 import { usePortfolio } from '../context/PortfolioContext';
+import { ProjectDocumentIcon } from './ProjectDocumentIcon';
 
 interface SideNavigationProps {
   currentSection: SectionId;
@@ -30,8 +31,17 @@ export const SideNavigation: React.FC<SideNavigationProps> = ({
     <>
       {/* LEFT SIDE NAVIGATION */}
       <aside className="fixed left-0 top-0 bottom-0 z-30 flex flex-col justify-between items-center pt-20 pb-6 md:pb-8 px-2.5 md:px-5 pointer-events-none select-none">
-        {/* Top Spacer */}
-        <div className="h-10" />
+        {/* Top Indicator / Spacer */}
+        {currentSection === 'projects' ? (
+          <div className="flex flex-col items-center -mt-10 animate-bounce duration-1000">
+            <div className={`w-[1.5px] h-12 ${isDark ? 'bg-white' : 'bg-black'}`} />
+            <div className="p-1 rounded-full border border-black dark:border-white">
+              <ProjectDocumentIcon size={20} spinGear={true} />
+            </div>
+          </div>
+        ) : (
+          <div className="h-10" />
+        )}
 
         {/* Vertical Section Link: Projects - Slide in from left */}
         <motion.div

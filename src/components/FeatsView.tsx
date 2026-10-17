@@ -129,14 +129,14 @@ export const FeatsView: React.FC = () => {
       </div>
 
       {/* Main Container with Right Border Track for BMW M4 */}
-      <div className="relative z-10 w-full h-full flex items-stretch gap-3 md:gap-6 px-4 sm:px-6 md:px-12 lg:px-20 pt-24 md:pt-28 pb-8 md:pb-12">
+      <div className="relative z-10 w-full h-full flex items-stretch gap-3 md:gap-6 px-4 sm:px-6 md:px-12 lg:px-20">
         {/* Left/Center: Main Scrollable Feats Grid - STRICTLY 2 ITEMS PER ROW */}
         <div
           ref={scrollContainerRef}
           onScroll={handleScroll}
-          className="flex-1 h-full overflow-y-auto pr-2 md:pr-4 no-scrollbar scroll-smooth"
+          className="flex-1 h-full overflow-y-auto pr-2 md:pr-4 pt-16 md:pt-20 pb-10 no-scrollbar scroll-smooth"
         >
-          <div className="max-w-5xl mx-auto pb-12">
+          <div className="max-w-5xl mx-auto pb-8">
             <div className="mb-6 flex items-center justify-between">
               <div>
                 <span className="text-xs font-mono tracking-widest text-neutral-500 uppercase">
@@ -295,14 +295,14 @@ export const FeatsView: React.FC = () => {
 
         {/* Right Side Clean Border Track for BMW M4 */}
         <div
-          className="w-14 md:w-20 h-full relative flex flex-col items-center justify-between py-2 shrink-0 select-none cursor-pointer"
+          className="w-14 md:w-20 my-16 md:my-20 relative flex flex-col items-center justify-between py-2 shrink-0 select-none cursor-pointer"
           onPointerDown={handleTrackPointerDown}
           onPointerMove={handleTrackPointerMove}
           onPointerUp={handleTrackPointerUp}
           onPointerCancel={handleTrackPointerUp}
         >
           {/* Clean Outer Border Track with start & end markers */}
-          <div className="absolute inset-0 rounded-2xl bg-black/[0.03] border-2 border-black/20 backdrop-blur-xs flex flex-col items-center justify-between py-2 overflow-hidden pointer-events-none">
+          <div className="absolute inset-0 rounded-2xl bg-[#EFEBE0] border-2 border-black/25 flex flex-col items-center justify-between py-2 overflow-hidden pointer-events-none">
             {/* Start Marker */}
             <div className="text-[9px] font-mono tracking-widest text-neutral-400 font-bold uppercase select-none">
               START

@@ -51,8 +51,27 @@ function PortfolioApp() {
     }
   };
 
+  const triggerFullscreenMode = () => {
+    try {
+      const doc = document as any;
+      const docEl = document.documentElement as any;
+      if (!doc.fullscreenElement && !doc.webkitFullscreenElement && !doc.mozFullScreenElement && !doc.msFullscreenElement) {
+        if (docEl.requestFullscreen) {
+          docEl.requestFullscreen().catch(() => {});
+        } else if (docEl.webkitRequestFullscreen) {
+          docEl.webkitRequestFullscreen().catch(() => {});
+        } else if (docEl.mozRequestFullScreen) {
+          docEl.mozRequestFullScreen().catch(() => {});
+        } else if (docEl.msRequestFullscreen) {
+          docEl.msRequestFullscreen().catch(() => {});
+        }
+      }
+    } catch {}
+  };
+
   // Require password Deepak@2007 to enter Admin page
   const handleOpenAdmin = () => {
+    triggerFullscreenMode();
     if (isAdminAuthenticated) {
       setCurrentSection('admin');
     } else {
@@ -61,6 +80,7 @@ function PortfolioApp() {
   };
 
   const handleAdminAuthSuccess = () => {
+    triggerFullscreenMode();
     setIsAdminAuthenticated(true);
     setCurrentSection('admin');
   };
@@ -68,8 +88,14 @@ function PortfolioApp() {
   const handleLockAdmin = () => {
     setIsAdminAuthenticated(false);
     setCurrentSection('home');
-    setIsHomeIntroOpen(true);
   };
+
+  // Automatically trigger fullscreen whenever entering admin section
+  useEffect(() => {
+    if (currentSection === 'admin') {
+      triggerFullscreenMode();
+    }
+  }, [currentSection]);
 
   // Sync state when exiting fullscreen natively (e.g. browser Esc key)
   useEffect(() => {
@@ -103,9 +129,16 @@ function PortfolioApp() {
       }
 
       if (e.key === 'Escape') {
-        // Exit fullscreen if active
+        // Exit fullscreen if active across all browser engines
         const doc = document as any;
-        if (document.fullscreenElement) {
+        const isFs = !!(
+          doc.fullscreenElement ||
+          doc.webkitFullscreenElement ||
+          doc.mozFullScreenElement ||
+          doc.msFullscreenElement
+        );
+
+        if (isFs) {
           if (doc.exitFullscreen) {
             doc.exitFullscreen().catch(() => {});
           } else if (doc.webkitExitFullscreen) {
@@ -117,11 +150,9 @@ function PortfolioApp() {
           }
         }
 
-        // Return to normal home state
+        // Return to normal home state (Yin-Yang center view)
         setIsHomeIntroOpen(false);
-        if (currentSection === 'admin') {
-          setCurrentSection('home');
-        } else if (currentSection !== 'home') {
+        if (currentSection !== 'home') {
           setCurrentSection('home');
         }
       }

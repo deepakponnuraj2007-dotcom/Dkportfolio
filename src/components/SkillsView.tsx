@@ -88,7 +88,7 @@ export const SkillsView: React.FC = () => {
   }, []);
 
   return (
-    <div className="relative w-full h-screen bg-[#FAF7F2] text-black overflow-hidden flex flex-col items-center justify-start select-none px-4 sm:px-6 md:px-16 pt-24 md:pt-28 pb-8 md:pb-12">
+    <div className="relative w-full h-screen bg-[#FAF7F2] text-black overflow-hidden select-none">
       {/* Interactive Constellation Canvas */}
       <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none z-0" />
 
@@ -99,72 +99,76 @@ export const SkillsView: React.FC = () => {
         </span>
       </div>
 
-      {/* Skill Cards Grid */}
-      <div className="relative z-10 w-full max-w-5xl grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 flex-1 overflow-y-auto no-scrollbar p-2 pb-16">
-        {skillCategories.map((category, idx) => {
-          const isFullStack = idx === 0 || category.id === 'fullstack';
-          return (
-            <motion.div
-              key={category.id}
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: false, amount: 0.2 }}
-              transition={{ duration: 0.5, delay: idx * 0.1 }}
-              className="p-8 md:p-10 bg-white/90 backdrop-blur-md rounded-2xl border-2 border-black shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 flex flex-col justify-between"
-            >
-              <div>
-                {/* Header with icon */}
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="p-2 bg-black text-white rounded-lg">
-                    {isFullStack ? (
-                      <Laptop className="w-5 h-5" />
-                    ) : idx === 1 ? (
-                      <Cpu className="w-5 h-5" />
-                    ) : (
-                      <Code2 className="w-5 h-5" />
-                    )}
+      {/* Full-height Scroll Container so no top/bottom white bar hides the cards */}
+      <div className="relative z-10 w-full h-full overflow-y-auto no-scrollbar px-4 sm:px-6 md:px-16 pt-16 md:pt-20 pb-10">
+        <div className="min-h-full w-full max-w-5xl mx-auto flex items-center justify-center">
+          <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 py-2">
+            {skillCategories.map((category, idx) => {
+              const isFullStack = idx === 0 || category.id === 'fullstack';
+              return (
+                <motion.div
+                  key={category.id}
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: false, amount: 0.2 }}
+                  transition={{ duration: 0.5, delay: idx * 0.1 }}
+                  className="p-6 sm:p-8 md:p-10 bg-white rounded-2xl border-2 border-black transition-all duration-300 transform hover:-translate-y-1 flex flex-col justify-between"
+                >
+                  <div>
+                    {/* Header with icon */}
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="p-2 bg-black text-white rounded-lg">
+                        {isFullStack ? (
+                          <Laptop className="w-5 h-5" />
+                        ) : idx === 1 ? (
+                          <Cpu className="w-5 h-5" />
+                        ) : (
+                          <Code2 className="w-5 h-5" />
+                        )}
+                      </div>
+                      <h3 className="text-2xl md:text-3xl font-extrabold tracking-tight text-black">
+                        {category.title}
+                      </h3>
+                    </div>
+
+                    {/* Subtitle / Tagline */}
+                    <p className="text-xs md:text-sm text-neutral-700 leading-relaxed font-sans mb-6">
+                      {category.tagline}
+                    </p>
+
+                    {/* Coding Languages / Core Skills */}
+                    <div className="mb-5">
+                      <h4 className="text-xs font-mono font-bold tracking-widest text-black uppercase mb-2">
+                        {category.codeInHeader}
+                      </h4>
+                      <p className="text-sm md:text-base font-medium text-neutral-800 leading-relaxed">
+                        {category.codeInList.join(', ')}
+                      </p>
+                    </div>
+
+                    {/* Tools & Frameworks */}
+                    <div>
+                      <h4 className="text-xs font-mono font-bold tracking-widest text-black uppercase mb-2">
+                        {category.toolsHeader}
+                      </h4>
+                      <p className="text-xs md:text-sm font-normal text-neutral-600 leading-relaxed">
+                        {category.toolsList.join(', ')}
+                      </p>
+                    </div>
                   </div>
-                  <h3 className="text-2xl md:text-3xl font-extrabold tracking-tight text-black">
-                    {category.title}
-                  </h3>
-                </div>
 
-                {/* Subtitle / Tagline */}
-                <p className="text-xs md:text-sm text-neutral-700 leading-relaxed font-sans mb-8">
-                  {category.tagline}
-                </p>
-
-                {/* Coding Languages / Core Skills */}
-                <div className="mb-6">
-                  <h4 className="text-xs font-mono font-bold tracking-widest text-black uppercase mb-2">
-                    {category.codeInHeader}
-                  </h4>
-                  <p className="text-sm md:text-base font-medium text-neutral-800 leading-relaxed">
-                    {category.codeInList.join(', ')}
-                  </p>
-                </div>
-
-                {/* Tools & Frameworks */}
-                <div>
-                  <h4 className="text-xs font-mono font-bold tracking-widest text-black uppercase mb-2">
-                    {category.toolsHeader}
-                  </h4>
-                  <p className="text-xs md:text-sm font-normal text-neutral-600 leading-relaxed">
-                    {category.toolsList.join(', ')}
-                  </p>
-                </div>
-              </div>
-
-              {/* Bottom decorative line */}
-              <div className="pt-6 mt-6 border-t border-black/10 flex items-center justify-between text-xs font-mono text-neutral-500">
-                <span className="flex items-center gap-1">
-                  <Flame className="w-3.5 h-3.5 text-black" /> Domain Mastery
-                </span>
-                <span>Active Track</span>
-              </div>
-            </motion.div>
-          );
-        })}
+                  {/* Bottom decorative line */}
+                  <div className="pt-5 mt-5 border-t border-black/15 flex items-center justify-between text-xs font-mono text-neutral-500">
+                    <span className="flex items-center gap-1">
+                      <Flame className="w-3.5 h-3.5 text-black" /> Domain Mastery
+                    </span>
+                    <span>Active Track</span>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+        </div>
       </div>
     </div>
   );

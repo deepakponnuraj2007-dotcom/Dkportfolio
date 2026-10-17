@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Plus,
   Trash2,
@@ -23,11 +23,14 @@ import {
   Lock,
   X,
   Cloud,
-  RefreshCw
+  RefreshCw,
+  Maximize2,
+  Minimize2
 } from 'lucide-react';
 import { usePortfolio } from '../context/PortfolioContext';
 import { ProjectItem, ExperienceItem, SkillCategoryItem, FeatItem } from '../types';
 import { ConfirmDialogModal } from './ConfirmDialogModal';
+import { AdminSplitScreenReveal } from './AdminSplitScreenReveal';
 
 interface AdminCMSViewProps {
   onBackToPortfolio: () => void;
@@ -77,8 +80,83 @@ export const AdminCMSView: React.FC<AdminCMSViewProps> = ({
   const [activeTab, setActiveTab] = useState<AdminTab>('projects');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [justSaved, setJustSaved] = useState(false);
+  const [replayRevealKey, setReplayRevealKey] = useState(0);
+  const [isFullscreen, setIsFullscreen] = useState(() => {
+    return !!(
+      document.fullscreenElement ||
+      (document as any).webkitFullscreenElement ||
+      (document as any).mozFullScreenElement ||
+      (document as any).msFullscreenElement
+    );
+  });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const jsonImportRef = useRef<HTMLInputElement>(null);
+
+  // Sync fullscreen state with browser events and engage full page mode on entrance
+  useEffect(() => {
+    const handleFullscreenSync = () => {
+      setIsFullscreen(
+        !!(
+          document.fullscreenElement ||
+          (document as any).webkitFullscreenElement ||
+          (document as any).mozFullScreenElement ||
+          (document as any).msFullscreenElement
+        )
+      );
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenSync);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenSync);
+    document.addEventListener('mozfullscreenchange', handleFullscreenSync);
+    document.addEventListener('MSFullscreenChange', handleFullscreenSync);
+
+    // Request fullscreen on entrance for Admin Page
+    const docEl = document.documentElement as any;
+    if (!document.fullscreenElement) {
+      if (docEl.requestFullscreen) {
+        docEl.requestFullscreen().catch(() => {});
+      } else if (docEl.webkitRequestFullscreen) {
+        docEl.webkitRequestFullscreen().catch(() => {});
+      } else if (docEl.mozRequestFullScreen) {
+        docEl.mozRequestFullScreen().catch(() => {});
+      } else if (docEl.msRequestFullscreen) {
+        docEl.msRequestFullscreen().catch(() => {});
+      }
+    }
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenSync);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenSync);
+      document.removeEventListener('mozfullscreenchange', handleFullscreenSync);
+      document.removeEventListener('MSFullscreenChange', handleFullscreenSync);
+    };
+  }, []);
+
+  const toggleFullscreen = () => {
+    const doc = document as any;
+    const docEl = document.documentElement as any;
+    if (isFullscreen) {
+      if (doc.exitFullscreen) {
+        doc.exitFullscreen().catch(() => {});
+      } else if (doc.webkitExitFullscreen) {
+        doc.webkitExitFullscreen().catch(() => {});
+      } else if (doc.mozCancelFullScreen) {
+        doc.mozCancelFullScreen().catch(() => {});
+      } else if (doc.msExitFullscreen) {
+        doc.msExitFullscreen().catch(() => {});
+      }
+    } else {
+      if (docEl.requestFullscreen) {
+        docEl.requestFullscreen().catch(() => {});
+      } else if (docEl.webkitRequestFullscreen) {
+        docEl.webkitRequestFullscreen().catch(() => {});
+      } else if (docEl.mozRequestFullScreen) {
+        docEl.mozRequestFullScreen().catch(() => {});
+      } else if (docEl.msRequestFullscreen) {
+        docEl.msRequestFullscreen().catch(() => {});
+      }
+    }
+  };
 
   // In-app Delete & Destructive Action Confirmation Modal
   const [confirmModal, setConfirmModal] = useState<{
@@ -637,6 +715,12 @@ export const AdminCMSView: React.FC<AdminCMSViewProps> = ({
 
   return (
     <div className="relative w-full h-screen bg-[#0E0E10] text-white flex flex-col overflow-hidden font-sans select-none">
+      {/* Split-Screen Cinematic Entrance Animation */}
+      <AdminSplitScreenReveal
+        key={replayRevealKey}
+        forceReplay={replayRevealKey > 0}
+      />
+
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed top-6 right-6 z-50 flex items-center gap-2 px-4 py-3 bg-white text-black font-mono text-xs font-bold rounded-xl shadow-2xl border-2 border-black animate-in fade-in slide-in-from-top-4 duration-300">
@@ -749,14 +833,42 @@ export const AdminCMSView: React.FC<AdminCMSViewProps> = ({
             )}
           </div>
 
+          {/* Full Page Mode (Fullscreen) Toggle */}
+          <button
+            onClick={toggleFullscreen}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-mono font-bold transition-all cursor-pointer ${
+              isFullscreen
+                ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300 hover:bg-emerald-500 hover:text-black'
+                : 'bg-white/10 border-white/20 text-white hover:bg-white hover:text-black'
+            }`}
+            title={isFullscreen ? 'Exit Full Page Mode' : 'Enter Full Page Mode'}
+          >
+            {isFullscreen ? (
+              <Minimize2 className="w-3.5 h-3.5 text-emerald-400" />
+            ) : (
+              <Maximize2 className="w-3.5 h-3.5 text-white" />
+            )}
+            <span>{isFullscreen ? 'Full Page: ON' : 'Full Page Mode'}</span>
+          </button>
+
+          {/* Replay Cinematic Entrance Reveal */}
+          <button
+            onClick={() => setReplayRevealKey((prev) => prev + 1)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-neutral-800 to-neutral-700 hover:from-white hover:to-white text-white hover:text-black transition-all text-xs font-mono font-bold border border-white/20 shadow-md cursor-pointer"
+            title="Replay Split-Screen Cinematic Entrance Reveal"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+            <span className="hidden sm:inline">Cinematic Reveal</span>
+          </button>
+
           {onReplayBoot && (
             <button
               onClick={onReplayBoot}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white text-white hover:text-black transition-all text-xs font-mono font-bold"
               title="Preview Loading Screen Animation"
             >
-              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-              <span>Replay Loading</span>
+              <RefreshCw className="w-3.5 h-3.5 text-sky-400" />
+              <span>Replay Boot</span>
             </button>
           )}
 
